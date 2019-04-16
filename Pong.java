@@ -12,4 +12,17 @@ public class Pong
         this.numFiles = numFiles;
         this.sizeOfFiles = sizeOfFiles;
     }
+
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+            return false;
+
+        if (obj.getClass() != this.getClass())
+            return false;
+        
+        Pong p = (Pong) obj;
+
+        return p.IP.equals(this.IP) && p.port == this.port;
+    }
 }

@@ -1,7 +1,7 @@
 JC = javac
 JFLAGS = -g
 
-default: Gnutella.class Pong.class Peer.class
+default: Gnutella.class Pong.class Peer.class test.class
 
 Pong.class: Pong.java
 	$(JC) $(JFLAGS) Pong.java
@@ -11,3 +11,6 @@ Peer.class: Peer.java
 
 Gnutella.class: Gnutella.java
 	$(JC) $(JFLAGS) Gnutella.java
+
+test.class: test.java
+	$(JC) $(JFLAGS) test.java
