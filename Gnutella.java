@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.io.*;
 import java.net.*;
@@ -8,6 +9,7 @@ public class Gnutella {
     public final static short DEFAULT_PORT = 6345;
     public final static int MAX_CONNECTIONS = 10;
     public final static int SLEEP_TIME_SECONDS = 5;
+    public final static String DEFAULT_DIR = System.getenv("HOME") + "/.gnutella-dir";
 
     public static void main(String[] args) {
         Gnutella g;
@@ -40,7 +42,9 @@ public class Gnutella {
 
         String[] split = addr.split(":", 2);
         String IP = split[0];
-        short connectPort = Short.parseShort(split[1]);
+        short connectPort = DEFAULT_PORT;
+        if (split.length > 1)
+            connectPort = Short.parseShort(split[1]);
 
         peers.add(new Peer(new Ping(connectPort, IP, 0, 0), System.currentTimeMillis()));
     }
@@ -48,9 +52,11 @@ public class Gnutella {
     public void start() {
         PingListener pingListener = new PingListener();
         PingSender pingSender = new PingSender();
+        FileSystem fileSystem = new FileSystem(DEFAULT_DIR);
 
         pingListener.start();
         pingSender.start();
+        fileSystem.start();
     }
 
     private class PingSender extends Thread {
@@ -89,8 +95,7 @@ public class Gnutella {
         }
 
         public void run() {
-            try {
-                DatagramSocket serverSocket = new DatagramSocket(myPing.port);
+            try (DatagramSocket serverSocket = new DatagramSocket(myPing.port)) {
                 byte[] receiveData = new byte[14];
 
                 while (true) {
@@ -119,6 +124,7 @@ public class Gnutella {
             for (Peer peer : peers) {
                 if (peer.ping.equals(ping)) {
                     peer.lastMessage = System.currentTimeMillis();
+                    peer.ping = ping;
                     return;
                 }
             }
@@ -141,6 +147,52 @@ public class Gnutella {
             } catch (Exception e) {
                 System.err.println("ProccessPing Error: " + e.getMessage());
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private class FileSystem extends Thread {
+
+        private String folderLocation;
+
+        public FileSystem(String folderLocation) {
+            this.folderLocation = folderLocation;
+        }
+
+        public void run() {
+            File f = new File(folderLocation);
+            f.mkdirs();
+            ArrayList<File> files = new ArrayList<File>();
+
+            while (true) {
+                findFiles(folderLocation, files);
+                int totalSize = 0;
+                for (File file : files) {
+                    totalSize += file.length();
+                }
+                myPing.sizeOfFiles = totalSize;
+                myPing.numFiles = files.size();
+                try {
+                    TimeUnit.SECONDS.sleep(60);
+                } catch (Exception e) {
+                    System.err.println("FileSystem Error: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        private void findFiles(String directoryName, List<File> files) {
+            File directory = new File(directoryName);
+
+            File[] fList = directory.listFiles();
+            if (fList != null) {
+                for (File file : fList) {
+                    if (file.isFile()) {
+                        files.add(file);
+                    } else if (file.isDirectory()) {
+                        findFiles(file.getAbsolutePath(), files);
+                    }
+                }
             }
         }
     }
