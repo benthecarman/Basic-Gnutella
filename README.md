@@ -25,7 +25,7 @@ All queried files are sent using TCP/IP.
 
 A ping or a pong message will be the same message.
 
-A ping should be sent every minute, if 3 cycles are missed then a peer should be dropped.
+A ping should be sent every minute, if 5 cycles are missed then a peer should be dropped.
 
 The message's format is as follows: (All in Big Endian)
 
@@ -55,7 +55,7 @@ node with the file will first send, in 4 bytes, the size of the file.  Then the 
 
 The program has 3 main threads, plus an extra thread for every query specified at startup
 
-### PingListener
+### PingListener Thread
 
 The PingListener thread handles incoming pings and queries.  It will forward the messages to peers and will attempt to serve the queries.
 
@@ -89,9 +89,9 @@ The PingListener thread handles incoming pings and queries.  It will forward the
 
     }
 
-### PingSender
+### PingSender Thread
 
-The PingSender thread periodically will send a ping to our peers, it also will drop peers if no message has been recieved from them in 3 ping cycles.
+The PingSender thread periodically will send a ping to our peers, it also will drop peers if no message has been recieved from them in 5 ping cycles.
 
 #### PingSender Pseudocode
 
@@ -101,8 +101,51 @@ The PingSender thread periodically will send a ping to our peers, it also will d
 
         foreach Peers as peer {
 
-            handle
+            If peer has missed 5 cycles, queue them to be dropped
+
+            Otherwise, send a ping to the peer.
 
         }
 
+        Remove queued peers
+
+        Sleep 1 minute
+
     }
+
+### FileSystem Thread
+
+The FileSystem thread keeps track of the folder the node is watching, every minute it will search the folder and track new files.
+
+#### FileSystem Pseudocode
+
+    If directory not available, create it.
+
+    while (true) {
+
+        Get all files in directory, add them to file list
+        Update saved ping to have correct number of files and correct size of files
+
+        Sleep 1 minute
+
+    }
+
+### QuerySender Thread
+
+The QuerySender thread will send out a query at startup and wait to recieve the requested file.
+
+#### QuerySender Pseudocode
+
+    Add query id to serviced query list
+
+    Send query to peers
+
+    Open server socket to accept connections
+
+    Once connection established, recieve 4 bytes to determine file size
+
+    Recieve the file in bytes.
+
+    Write file to disk
+
+    close the socket
