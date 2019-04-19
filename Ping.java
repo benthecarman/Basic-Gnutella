@@ -3,6 +3,9 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
 public class Ping {
+
+    public final static int BASE_PACKET_LENGTH = 14;
+
     short port;
     String IP;
     int numFiles;
@@ -15,26 +18,23 @@ public class Ping {
         this.sizeOfFiles = sizeOfFiles;
     }
 
-    public Ping(byte[] bytes) throws UnknownHostException
-    {
+    public Ping(byte[] bytes) throws UnknownHostException {
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-        byte[] ip = new byte[4];
-        System.arraycopy(buffer.array(), 2, ip, 0, 4); // Get IP bytes
-
         this.port = buffer.getShort();
+        byte[] ip = new byte[4];
+        buffer.get(ip);
         this.IP = InetAddress.getByAddress(ip).getHostAddress();
-        buffer.getInt(); // Move internal pointer ahead
         this.numFiles = buffer.getInt();
         this.sizeOfFiles = buffer.getInt();
     }
 
     public byte[] toBytes() throws UnknownHostException {
-        byte[] bytes = new byte[14];
+        byte[] bytes = new byte[BASE_PACKET_LENGTH];
 
         ByteBuffer portBuf = ByteBuffer.allocate(2);
         portBuf.putShort(this.port);
-        System.arraycopy(portBuf.array(), 0, bytes, 0, 2);
+        System.arraycopy(portBuf.array(), 0, bytes, 0, portBuf.capacity());
 
         byte[] ipBuf = InetAddress.getByName(this.IP).getAddress();
         System.arraycopy(ipBuf, 0, bytes, 2, ipBuf.length);
@@ -42,7 +42,7 @@ public class Ping {
         ByteBuffer numBuf = ByteBuffer.allocate(8);
         numBuf.putInt(this.numFiles);
         numBuf.putInt(this.sizeOfFiles);
-        System.arraycopy(numBuf.array(), 0, bytes, 2 + ipBuf.length, numBuf.array().length);
+        System.arraycopy(numBuf.array(), 0, bytes, portBuf.capacity() + ipBuf.length, numBuf.capacity());
 
         return bytes;
     }
@@ -60,8 +60,8 @@ public class Ping {
     }
 
     // for debugging
-    public String toString()
-    {
-        return "Port: " + this.port + " IP: " + this.IP + " numFiles: " + this.numFiles + " sizeOfFiles: " + this.sizeOfFiles;
+    public String toString() {
+        return "Port: " + this.port + " IP: " + this.IP + " numFiles: " + this.numFiles + " sizeOfFiles: "
+                + this.sizeOfFiles;
     }
 }
